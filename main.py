@@ -41,6 +41,10 @@ def validate(text):
         return False, "only white space"
     if "\n" in text or "\r" in text:
         return False, "not a single line"
+    if any(ord(ch) < 32 for ch in text):
+        return False, "contains control characters"
+    if text != text.strip():
+        return False, "leading/trailing white space wastes characters"
     return True, "ok (%d chars)" % len(text)
 
 
@@ -64,7 +68,12 @@ def verify_written(path):
     return True, "verified on disk (%d bytes, %d chars)" % (len(raw), len(text))
 
 
-def main():
+def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if "--check" in argv:
+        ok, reason = validate(EXCUSE)
+        print(("OK: " if ok else "INVALID: ") + reason)
+        return 0 if ok else 1
     ok, reason = validate(EXCUSE)
     if not ok:
         print("INVALID: %s" % reason, file=sys.stderr)

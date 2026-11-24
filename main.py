@@ -44,6 +44,26 @@ def validate(text):
     return True, "ok (%d chars)" % len(text)
 
 
+def verify_written(path):
+    """Re-read the bytes just written and re-validate them from disk.
+
+    Catches encoding/newline surprises (e.g. a platform translating line
+    endings) that an in-memory check cannot see.
+    """
+    with open(path, "rb") as f:
+        raw = f.read()
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return False, "bytes on disk are not UTF-8"
+    ok, reason = validate(text)
+    if not ok:
+        return False, "written text failed gate: %s" % reason
+    if text != EXCUSE:
+        return False, "written text differs from EXCUSE"
+    return True, "verified on disk (%d bytes, %d chars)" % (len(raw), len(text))
+
+
 def main():
     ok, reason = validate(EXCUSE)
     if not ok:
@@ -56,6 +76,11 @@ def main():
     with open(path, "w", encoding="utf-8", newline="") as f:
         f.write(EXCUSE)
     print("wrote %s (%s)" % (path, reason))
+    ok, reason = verify_written(path)
+    if not ok:
+        print("VERIFY FAILED: %s" % reason, file=sys.stderr)
+        return 1
+    print(reason)
     return 0
 
 
